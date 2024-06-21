@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<error-handler name="global-error-handler" doc:id="77f85497-bc5a-4406-9826-4708e19ce808" >
+	<on-error-propagate type="APIKIT:BAD_REQUEST" enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="ef3cf218-baa9-4253-9657-bc8168fb8815" >
+			<set-variable value="#[400]" doc:name="Set the HTTP Status - 400" doc:id="5e7ccc4e-d9ea-4e3d-8442-c14ecb513309" variableName="httpStatus"/>
+			<set-variable value='Bad request' doc:name="set errorMessage" doc:id="3cdb7dd5-31bf-4c24-b910-101a9242ea20" variableName="errorMessage"/>
+			<set-variable value='#[((((error.description default "" replace "Error validating JSON. Error: - " with "") replace "- " with "") replace "\"" with "") splitBy "\n")]' doc:name="Set errorDescription" doc:id="e094d07d-c5fb-4083-8f00-6b1a40369929" variableName="errorDescription"/>
+			<flow-ref doc:name="global-prepare-error-response-sub-flow" doc:id="eb11b457-b296-4d7e-9a27-6d2bdaca019a" name="global-prepare-error-response-sub-flow"/>
+		</on-error-propagate> 
+		<on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2dc25069-521b-4119-b9d9-8a2811417ff1" >
+			<set-variable value="#[405]" doc:name="Set HTTP Status - 405" doc:id="3a96b68f-77cf-4b1e-a185-d4384e1bf5b8" variableName="httpStatus" />
+			<set-variable value='Method Not Allowed' doc:name="Set Error Message" doc:id="b5b32a4e-135b-42b7-85fd-ef756edd3471" variableName="errorMessage"/>
+			<set-variable value="The method specified in the request is not allowed for this resource" doc:name="Set Error Description" doc:id="294531c7-7f83-4fef-a1ae-520bd7f2b25b" variableName="errorDescription"/>
+			<flow-ref doc:name="global-prepare-error-response-sub-flow" doc:id="7521a9ad-5006-43b3-acae-46284c39aac7" name="global-prepare-error-response-sub-flow"/>
+		</on-error-propagate>
+		<on-error-propagate type="APIKIT:NOT_FOUND" enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="68d40e8d-5285-41e2-b299-01d614c1b656" >
+			<set-variable value="#[404]" doc:name="Set HTTP Status - 404" doc:id="de8bb9db-b4f8-4cd3-9f0a-348869331950" variableName="httpStatus" />
+			<set-variable value="Not found" doc:name="Set Error Message" doc:id="23037b6a-29f1-41d7-867f-58af686326e4" variableName="errorMessage"/>
+			<set-variable value="The server has not found anything matching the Request-URI" doc:name="Set Error Description" doc:id="e6d889a0-2b53-455d-aadf-0ba15fb6bf91" variableName="errorDescription"/>
+			<flow-ref doc:name="global-prepare-error-response-sub-flow" doc:id="4d71d4db-ea53-4c48-ad7f-4d6ce2981972" name="global-prepare-error-response-sub-flow"/>
+		</on-error-propagate>	
+		
+		
+		<!-- HTTP Requster Related error handling -->	
+		
+		<on-error-propagate type="SALESFORCE:CONNECTIVITY" enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a632b2ae-b8bb-4711-8c24-cb94a4b02091" >
+			<set-variable value="#[503]" doc:name="Set HTTP Status - 503" doc:id="589d97c5-1dfb-46af-9207-9632e1e1f5ff" variableName="httpStatus" />
+      		<set-variable value="Service unavailable" doc:name="Set Error Message" doc:id="bf79f24a-fdb4-4418-b0aa-e1cfe01323ee" variableName="errorMessage" />
+			<set-variable value="The (upstream) service is temporarily not available " doc:name="Set errorDescription" doc:id="012bd74a-78be-4d0f-938a-88d50d665992" variableName="errorDescription"/>
+			<flow-ref doc:name="global-prepare-error-response-sub-flow" doc:id="f498eea1-ea09-46cc-80c5-7e05119d8009" name="global-prepare-error-response-sub-flow"/>
+		</on-error-propagate>
+		<on-error-propagate type="ANY" enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4aa15648-61ab-4f57-84e7-2a917c1c0155">
+			<set-variable value="#[500]" doc:name="Set HTTP Status - 500" variableName="httpStatus"/>
+			<set-variable value="Internal server error" doc:name="Set Error Message" doc:id="c787b78c-3afd-4e4d-8ae2-41e8127843b4" variableName="errorMessage"/>
+			<set-variable value="The server encountered an unexpected condition which prevented it from fulfilling the request" doc:name="errorDescription" doc:id="a371c0b5-912b-4461-af7c-d20f531c447d" variableName="errorDescription"/>
+			<flow-ref doc:name="global-prepare-error-response-sub-flow" doc:id="e155d644-3845-4c66-9b34-a73023916fec" name="global-prepare-error-response-sub-flow"/>
+		</on-error-propagate>
+</error-handler>
+
+    <sub-flow name="global-prepare-error-response-sub-flow" doc:id="4d88dcc6-e89d-4c57-88b3-b5d46d7f3500">
+		<ee:transform doc:name="Init Variables" doc:id="1094c585-818e-4238-972b-5e6d72d3cb60" >
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="errorRaised"><![CDATA[%dw 2.0
+output application/java
+---
+true]]></ee:set-variable>
+				<ee:set-variable variableName="errorDescription"><![CDATA[%dw 2.0
+output application/java
+---
+if(vars.errorDescription?) 
+	vars.errorDescription 
+else 
+	error.exception.detailMessage]]></ee:set-variable>
+				<ee:set-variable variableName="logCategory"><![CDATA[%dw 2.0
+output application/java
+---
+'Exception']]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Error Response" doc:id="1e9b9ba3-0d9f-42aa-b0e4-fe1e5a0351c1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json encoding="UTF-8", skipNullOn="everywhere"
+var errors = (((error.description default "" replace "Error validating JSON. Error: - " with "") replace "- " with "") splitBy "\n")
+---
+{
+	code : vars.httpStatus,
+	message : if(vars.errorMessage != null) vars.errorMessage else (error.errorType.identifier),
+	description: if(vars.errorDescription != null) vars.errorDescription else error.description,
+	dateTime : now() as String { format: "yyyy-MM-dd'T'HH:mm:ss" },
+	correlationId : vars.correlationId
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Error Log" doc:id="ee9dae01-a2f0-4fd1-a01a-8f3c4fec5a4a" message="correlationId [#[vars.correlationId]] - Error Code [#[vars.httpStatus]] - Error Message [#[error.errorType.identifier default '']] - Error Description [#[error.description default '']]"/>
+	</sub-flow>
+</mule>
+	

@@ -1,0 +1,92 @@
+#%RAML 1.0 Library
+
+
+traits:
+  accountTraits:
+    headers:
+      client_id:
+        description: Client Id to be passed for authenticating the API
+        type: string
+        required: true
+        example: "9hbc2387723dgchwbchbwc"
+      client_secret:
+        description: Client Secret to be passed for authenticating the API
+        type: string
+        required: true
+        example: "9hbc2387723dgchwbchbwc"
+      channel:
+        description: Consumer channel name of the API
+        type: string
+        required: false
+        example: Mobile
+      correlationId:
+        description: Correlation ID used for tracking the API
+        type: string
+        required: true
+        example : "bad0e5b0-9191-11eb-a0b3-36548d51aeee"
+
+types:
+  accountType:
+    properties:
+      name:
+        description: Account Name
+        type: string
+        required: true
+        pattern: ^[a-zA-Z0-9 ]*$
+        example: "Sravanthi"
+      email:
+        description: Email ID
+        type: string
+        required: true
+        example: "abc@xyz.com"
+      number:
+        description: Account Number
+        type: string
+        required: false
+        example: "1011"
+      phone:
+        description: Account's phone number
+        type: string
+        required: false
+        example: "9282732737"
+      fax:
+        description: Account's Fax number
+        type: string
+        required: false
+        example: "9282732733"
+      billingAddress: 
+        description: Billing Account address
+        type: addressType
+        required: false
+      shippingAddress:
+        description: Shipping Account address
+        type: addressType
+        required: false
+
+  addressType:
+    properties:
+      street:
+        description: Street Name
+        type: string
+        required: false
+        example: "Oxford Street"
+      city:
+        description: City Name
+        type: string
+        required: false
+        example: "Hyderabad"
+      state:
+        description: State of Residence or province
+        type: string
+        required: false
+        example: "telangana"
+      postalCode:
+        description: Postal code or zip
+        type: string
+        required: false
+        example: "398726"
+      countryIso:
+        description: countryIso
+        type: string
+        required: false
+        example: "In"

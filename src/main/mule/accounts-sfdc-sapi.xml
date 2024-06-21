@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+    
+    <flow name="accounts-sfdc-sapi-main" doc:id="62506353-8bc4-46ab-b8a3-86cab832fdb5">
+        <http:listener config-ref="accounts-sfdc-sapi-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <set-variable value="#[attributes.headers['correlationId']]" doc:name="correlationId" doc:id="af8ce088-bafc-4e96-b88f-6c2c7cc46830" variableName="correlationId" />
+		<apikit:router config-ref="accounts-sfdc-sapi-config" />
+    </flow>
+    <flow name="put:\accounts\(accountId):application\json:accounts-sfdc-sapi-config" doc:id="709efee0-a7d0-4361-bd6b-e2fe44c57f81">
+    	<logger level="INFO" doc:name="correlationId Logger (flow start)" doc:id="91c1b7b4-dfe7-4460-b09e-e4aea76c405e" message="put:\accounts\(accountId):accounts-sfdc-sapi-config flow start : Request received for correlationId : #[vars.correlationId]"/>
+        <set-variable value="#[attributes.uriParams.'accountId']" doc:name="accountId" doc:id="cdda3d10-695b-415c-965f-a17fb4381c51" variableName="accountId"/>
+        <set-variable value="#[payload]" doc:name="record" doc:id="074bab57-b45a-4ba0-b910-09715dc57215" variableName="record"/>
+		<salesforce:query doc:name="Query" doc:id="0acd4dd1-ced4-4a49-ad96-7520d61b4729" config-ref="Salesforce_Config">
+			<reconnect />
+			<salesforce:salesforce-query ><![CDATA[SELECT accountId__c,Id,Name FROM Account where accountId__c = ':accountId']]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	accountId : vars.accountId
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<choice doc:name="Choice" doc:id="cbfab64c-0af3-41f3-978f-3b2dc8830760" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Transform Message" doc:id="b7c91269-173e-454a-8caf-8de30df0c4c7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{	
+	Id : payload[0].Id,
+	Name: vars.record.name,
+	BillingStreet: vars.record.billingAddress.street,
+	BillingCity: vars.record.billingAddress.city,
+	BillingState: vars.record.billingAddress.state,
+	BillingPostalCode: vars.record.billingAddress.postalCode,
+	BillingCountry: vars.record.billingAddress.countryIso,
+	ShippingStreet: vars.record.shippingAddress.street,
+	ShippingCity: vars.record.shippingAddress.city,
+	ShippingState: vars.record.shippingAddress.state,
+	ShippingPostalCode: vars.record.shippingAddress.postalCode,
+	ShippingCountry: vars.record.shippingAddress.countryIso,
+	Phone: vars.record.phone,
+	Fax: vars.record.fax,
+	Email__c: vars.record.email,
+	AccountNumber: vars.record.number,
+	accountId__c : vars.accountId
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<salesforce:update type="Account" doc:name="Update" doc:id="65c84873-e014-49e9-ac36-bbc622712624" config-ref="Salesforce_Config" >
+					<reconnect />
+				</salesforce:update>
+				<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  id: payload.items.payload[0].id,
+  status:  if(payload.items.payload[0].success == true) 1
+  			else 0,
+  message: if(payload.items.payload[0].success == true) "Account updated successfully"
+  			else "Unable to Update Account"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="9d796465-666f-45cd-9846-0363685d6b4d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  id: payload.items.payload[0].id,
+  status:  0,
+  message: "Unable to Update Account (No Account Found For AccountId)"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="correlationId Logger (flow end)" doc:id="50d95cab-4002-42a9-809c-67d82dbf8a1d" message="put:\accounts\(accountId):accounts-sfdc-sapi-config flow end : correlationId : #[vars.correlationId]" />
+    </flow>
+    <flow name="delete:\accounts\(accountId):accounts-sfdc-sapi-config">
+        <logger level="INFO" doc:name="correlationId Logger (flow start)" doc:id="dd34c8fb-8fa6-4bc4-b6a2-ecb554d7d8e7" message="delete:\accounts\(accountId):accounts-sfdc-sapi-config flow start : Request received for correlationId : #[vars.correlationId]" />
+		<set-variable value="#[attributes.uriParams.'accountId']" doc:name="accountId" doc:id="4b41364d-a358-483d-9d2d-839e4c094f15" variableName="accountId" />
+		<salesforce:query doc:name="Query" doc:id="691f6837-caa6-4e20-b722-79ca1e375889" config-ref="Salesforce_Config">
+			<reconnect />
+			<salesforce:salesforce-query><![CDATA[SELECT accountId__c,Id,Name FROM Account where accountId__c = ':accountId']]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	accountId : vars.accountId
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<choice doc:name="Choice" doc:id="d263666e-0e93-40c7-a298-2f4f2fb8b850" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Transform Message" doc:id="8a464b3f-26a8-4b0f-bc00-807a74aca4fe" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[payload[0].Id]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:delete doc:name="Delete" doc:id="a77b7ecb-6ab0-4dda-89be-723bac21bba5" config-ref="Salesforce_Config">
+					<reconnect />
+				</salesforce:delete>
+				<ee:transform doc:name="Transform Message" doc:id="bf71a100-b9d0-471a-ba68-0dfbedbad554" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  id: payload.items.payload[0].id,
+  status:  if(payload.items.payload[0].success == true) 1
+  			else 0,
+  message: if(payload.items.payload[0].success == true) "Account deleted successfully"
+  			else "Unable to delete Account"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="50802f92-fa2b-430e-b7eb-03343b1c904f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  id: payload.items.payload[0].id,
+  status:  0,
+  message: "Unable to delete Account (No Account Found For AccountId)"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="correlationId Logger (flow end)" doc:id="75ad2165-d578-4e21-942c-ce79a699df06" message="delete:\accounts\(accountId):accounts-sfdc-sapi-config flow end : correlationId : #[vars.correlationId]" />
+    </flow>
+    <flow name="get:\accounts\(accountId):accounts-sfdc-sapi-config">
+    	<logger level="INFO" doc:name="correlationId Logger (flow start)" doc:id="ab0cdbb6-039c-473b-9c53-950292e4e272" message="get:\accounts\(accountId):accounts-sfdc-sapi-config flow start : Request received for correlationId : #[vars.correlationId]"/>
+        <set-variable value="#[attributes.uriParams.'accountId']" doc:name="accountId" doc:id="9406dd19-6531-4c6d-ac5a-fa940c23328f" variableName="accountId"/>
+        <salesforce:query doc:name="Get Account by AccountID" doc:id="0a67451f-43a1-4e1a-92eb-efac359720d2" config-ref="Salesforce_Config">
+			<reconnect />
+			<salesforce:salesforce-query ><![CDATA[Select Name,AccountNumber,email__c,Phone,Fax,BillingAddress,ShippingAddress 
+from Account
+WHERE accountId__c = ':id']]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	id : vars.accountId
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="e7ce6167-a471-4b56-bca1-f475fd1f1d03" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if(sizeOf(payload) > 0)
+
+{
+  "name": payload[0].Name,
+  "email": payload[0].email__c,
+  "number": payload[0].AccountNumber,
+  "phone": payload[0].Phone,
+  "fax": payload[0].Fax,
+  "billingAddress": {
+    "street": payload[0].BillingAddress.street,
+    "city": payload[0].BillingAddress.city,
+    "state": payload[0].BillingAddress.state,
+    "postalCode": payload[0].BillingAddress.postalCode,
+    "country": payload[0].BillingAddress.country
+  },
+  "shippingAddress": {
+    "street": payload[0].ShippingAddress.street,
+    "city": payload[0].ShippingAddress.city,
+    "state": payload[0].ShippingAddress.state,
+    "postalCode": payload[0].ShippingAddress.postalCode,
+    "country": payload[0].ShippingAddress.country
+  }
+}
+
+else
+
+{
+	message : "No Account Found for AccountId"
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" message="get:\accounts\(accountId):accounts-sfdc-sapi-config flow end : correlationId : #[vars.correlationId]" doc:name="correlationId Logger (flow end)"/>
+    </flow>
+    <flow name="post:\accounts:application\json:accounts-sfdc-sapi-config">
+        <logger level="INFO" doc:name="correlationId Logger (flow start)" doc:id="954416ab-98bb-493a-a6f4-375a3eee3581" message="post:\accounts:accounts-sfdc-sapi-config flow start : Request received for correlationId : #[vars.correlationId]" />
+		<set-variable value="#[payload.email]" doc:name="email" doc:id="f714fb64-e5fd-4b5c-8adf-ebaa086dd433" variableName="email"/>
+		<set-variable value="#[payload]" doc:name="record" doc:id="1bd39b6b-21ec-43fb-88ee-e5fb129cb0e6" variableName="record" />
+		<salesforce:query doc:name="Query" doc:id="68273d21-457b-4550-9259-e173574e18b2" config-ref="Salesforce_Config">
+			<reconnect />
+			<salesforce:salesforce-query><![CDATA[SELECT accountId__c,Id,Name FROM Account where Email__c = ':Email']]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	Email : vars.email
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<choice doc:name="Choice" doc:id="f85c7b61-6500-4ce5-a47d-3370d6fccb0c" >
+			<when expression="#[sizeOf(payload) == 0]">
+				<ee:transform doc:name="Transform Message" doc:id="12f364fa-f655-4c9e-b31a-217bd4599510">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/java
+---
+{
+	Name: vars.record.name,
+	BillingStreet: vars.record.billingAddress.street,
+	BillingCity: vars.record.billingAddress.city,
+	BillingState: vars.record.billingAddress.state,
+	BillingPostalCode: vars.record.billingAddress.postalCode,
+	BillingCountry: vars.record.billingAddress.countryIso,
+	ShippingStreet: vars.record.shippingAddress.street,
+	ShippingCity: vars.record.shippingAddress.city,
+	ShippingState: vars.record.shippingAddress.state,
+	ShippingPostalCode: vars.record.shippingAddress.postalCode,
+	ShippingCountry: vars.record.shippingAddress.countryIso,
+	Phone: vars.record.phone,
+	Fax: vars.record.fax,
+	Email__c: vars.record.email,
+	AccountNumber: vars.record.number,
+	accountId__c : substringBefore((random() * 10000000),".")
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<salesforce:create doc:name="Create Account" doc:id="061bba6e-08db-49f9-8744-2f63f4997b95" config-ref="Salesforce_Config" type="Account">
+			<reconnect />
+					<salesforce:records><![CDATA[#[[payload]]]]></salesforce:records>
+		</salesforce:create>
+				<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  id: payload.items.payload[0].id,
+  status:  if(payload.items.payload[0].success == true) 1
+  			else 0,
+  message: if(payload.items.payload[0].success == true) "Account created successfully"
+  			else "Unable to create Account"
+}]]></ee:set-payload>
+            </ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="localizedMessage" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message : payload..localizedMessage[0],
+	status : payload..statusCode[0],
+	correlationId : vars.correlationId
+	
+}]]></ee:set-variable>
+					</ee:variables>
+        </ee:transform>
+				<choice doc:name="Choice" doc:id="c8be0e7a-6f15-4ba5-92da-93c175e3eacf" >
+					<when expression="#[payload.status == 0]">
+						<logger level="INFO" doc:name="Log Business Error" doc:id="34b2ec2f-0766-4533-a961-fda8464b51f8" message="#[vars.localizedMessage]"/>
+						<set-variable value="#[200]" doc:name="HTTP Status - 200" doc:id="303fafc9-7420-4ce1-929b-31d1d089d87c" variableName="httpStatus" />
+					</when>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="04f896e8-6c64-47c2-ab60-451c460ae8a0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  id: payload.items.payload[0].id,
+  status:  0,
+  message: "Unable to Create New Account (Duplicate Account Found For Email)"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="#[200]" doc:name="Set HTTP Status - 200" doc:id="f99c0762-fe5e-48db-9269-5e806d77f8ff" variableName="httpStatus" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="correlationId Logger (flow End)" doc:id="4a76be95-4ff9-4457-afa4-e81cafe190d0" message="post:\accounts:accounts-sfdc-sapi-config flow end : correlationId : #[vars.correlationId]" />
+    </flow>
+</mule>

@@ -1,0 +1,67 @@
+#%RAML 1.0
+title: accounts-sfdc-sapi
+
+description: This is the System API to fetch/create/update/delete accounts in Salesforce.
+
+uses:
+  accountsLibrary: exchange_modules/00482c58-01cd-4e26-8ef4-9c1baf150ce3/accountslibrary/1.0.3/accountslibrary.raml
+
+/accounts:
+  post: 
+    description: Create an account in Salesforce
+    is: [accountsLibrary.accountTraits]
+    body:
+      application/json:
+        type: accountsLibrary.accountType
+    responses:
+      201:
+        body:
+          application/json:
+            example: |
+              {
+                "id": "0015j00000VNSljAAH",
+                "status": 0,
+                "message": "Account created successfully"
+              }
+
+  /{accountId}:
+    get:
+      description: Retrieve an account object from Salesforce
+      is: [accountsLibrary.accountTraits]
+      responses:
+        200:
+          body:
+            application/json:
+              type: accountsLibrary.accountType
+   
+    put:
+      description: Updates an account object from Salesforce
+      is: [accountsLibrary.accountTraits]
+      body:
+        application/json:
+          type: accountsLibrary.accountType
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {
+                  "id": "0015j00000VNSljAAH",
+                  "status": 0,
+                  "message": "Account updated successfully"
+                }
+    delete:
+      description: Deletes an account object from Salesforce
+      is: [accountsLibrary.accountTraits]
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {
+                  "id": "0015j00000VNSljAAH",
+                  "status": 0,
+                  "message": "Account deleted successfully"
+                }
+
+      
