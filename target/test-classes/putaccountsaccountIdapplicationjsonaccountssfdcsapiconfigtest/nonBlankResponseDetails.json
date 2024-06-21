@@ -1,0 +1,33 @@
+{
+        "BillingAddress": {
+            "country": null,
+            "city": "Singapore",
+            "countryCode": null,
+            "street": "9 Tagore Lane\nSingapore, Singapore 787472\nSingapore",
+            "latitude": null,
+            "postalCode": null,
+            "geocodeAccuracy": null,
+            "stateCode": null,
+            "state": "Singapore",
+            "longitude": null
+        },
+        "Phone": "(650) 450-8810",
+        "ShippingAddress": {
+            "country": null,
+            "city": null,
+            "countryCode": null,
+            "street": "9 Tagore Lane\nSingapore, Singapore 787472\nSingapore",
+            "latitude": null,
+            "postalCode": null,
+            "geocodeAccuracy": null,
+            "stateCode": null,
+            "state": null,
+            "longitude": null
+        },
+        "email__c": null,
+        "Id": "0015g00000q8PeXAAU",
+        "type": "Account",
+        "Fax": "(650) 450-8820",
+        "Name": "United Oil & Gas, Singapore",
+        "AccountNumber": "CD355120-B"
+    }
